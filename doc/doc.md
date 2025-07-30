@@ -53,10 +53,12 @@
 相机的内参矩阵记作 `camera_matrix`，这是一个 3x3 的矩阵。畸变系数记作 `dist_coeffs`，这是一个 1x4 的向量。相机的投影矩阵记作 `project_matrix`，这是一个 3x3 的射影矩阵。
 
 
-# 准备工作：获得原始图像与相机内参
+# 01. 准备工作：获得原始图像与相机内参
 
 
-首先我们需要获取每个相机的内参矩阵与畸变系数。我在项目中附上了一个脚本 [run_calibrate_camera.py](https://github.com/neozhaoliang/surround-view-system-introduction/blob/master/run_calibrate_camera.py)，你只需要运行这个脚本，通过命令行参数告诉它相机设备号，是否是鱼眼相机，以及标定板的网格大小，然后手举标定板在相机面前摆几个姿势即可。
+首先我们需要获取每个相机的内参矩阵与畸变系数。我在项目中附上了一个脚本 [run_calibrate_camera.py](../01-run_calibrate_camera.py)，你只需要运行这个脚本，通过命令行参数告诉它相机设备号，是否是鱼眼相机，以及标定板的网格大小，然后手举标定板在相机面前摆几个姿势即可（尽可能覆盖相机的每个视野，而不要总是将标定板放在相机中间）。
+
+如果标定成功，会将相机参数保存在[camera_params.yaml](../yaml/camera_params.yaml)中，包括`resolution`,`camera_matrix`,`dist_coeffs`三个字段。
 
 以下是视频中四个相机分别拍摄的原始画面，顺序依次为前、后、左、右，并命名为 `front.png`、`back.png`、`left.png`、`right.png` 保存在项目的 `images/` 目录下。
 
@@ -65,17 +67,19 @@
 |front|back|left|right|
 |<img style="margin:0px auto;display:block" width=200 src="./img/images/front.png"/>|<img style="margin:0px auto;display:block" width=200 src="./img/images/back.png"/>|<img style="margin:0px auto;display:block" width=200 src="./img/images/left.png"/>|<img style="margin:0px auto;display:block" width=200 src="./img/images/right.png"/>|
 
-四个相机的内参文件分别为 `front.yaml`、`back.yaml`、`left.yaml`、`right.yaml`，这些内参文件都存放在项目的 [yaml](https://github.com/neozhaoliang/surround-view-system-introduction/tree/master/yaml) 子目录下。
+四个相机的内参文件分别为 `front.yaml`、`back.yaml`、`left.yaml`、`right.yaml`，这些内参文件都存放在项目的 [yaml](../yaml) 子目录下。
 
 你可以看到图中地面上铺了一张标定布，这个布的尺寸是 `6mx10m`，每个黑白方格的尺寸为 `40cmx40cm`，每个圆形图案所在的方格是 `80cmx80cm`。我们将利用这个标定物来手动选择对应点获得投影矩阵。
 
 
-# 设置投影范围和参数
+# 02-01. 设置投影范围和参数
 
 
 接下来我们需要获取每个相机到地面的投影矩阵，这个投影矩阵会把相机校正后的画面转换为对地面上某个矩形区域的鸟瞰图。这四个相机的投影矩阵不是独立的，它们必须保证投影后的区域能够正好拼起来。
 
-这一步是通过联合标定实现的，即在车的四周地面上摆放标定物，拍摄图像，手动选取对应点，然后获取投影矩阵。
+这一步是通过联合标定实现的，即在车的四周地面上摆放标定物，拍摄图像，手动选取对应点(选取时尽可能选择覆盖范围更大的矩形空间)，获取投影矩阵`project_martix`, `scale_xy`, `shift_xy`三个字段。
+
+此处，需要考虑选取点和对应点的映射关系。
 
 请看下图：
 
@@ -85,7 +89,7 @@
 
 在上面拍摄的相机画面中车的四周铺了一张标定布，这个具体是标定板还是标定布不重要，只要能清楚的看到特征点就可以了。
 
-然后我们需要设置几个参数：(以下所有参数均以厘米为单位)
+然后我们需要在[param_settings.py](../surround_view/param_settings.py) 中设置几个参数：(以下所有参数均以厘米为单位)
 
 + `innerShiftWidth`, `innerShiftHeight`：标定板内侧边缘与车辆左右两侧的距离，标定板内侧边缘与车辆前后方的距离。
 + `shiftWidth`, `shiftHeight`：这两个参数决定了在鸟瞰图中向标定板的外侧看多远。这两个值越大，鸟瞰图看的范围就越大，相应地远处的物体被投影后的形变也越严重，所以应酌情选择。
@@ -100,31 +104,32 @@
 
 注意这个车辆区域四边的延长线将整个鸟瞰图分为前左 (FL)、前中 (F)、前右 (FR)、左 (L)、右 (R)、后左 (BL)、后中 (B)、后右 (BR) 八个部分，其中 FL (区域 I)、FR (区域 II)、BL (区域 III)、BR (区域 IV) 是相邻相机视野的重合区域，也是我们重点需要进行融合处理的部分。F、R、L、R 四个区域属于每个相机单独的视野，不需要进行融合处理。
 
-以上参数存放在 [param_settings.py](https://github.com/neozhaoliang/surround-view-system-introduction/blob/master/surround_view/param_settings.py) 中。
-
 设置好参数以后，每个相机的投影区域也就确定了，比如前方相机对应的投影区域如下：
 
-<img style="margin:0px auto;display:block" width=400 src="./img/mask.png"/>
+<img style="margin:0px auto;display:block" width=800 src="./img/mask/>
 
 接下来我们需要通过手动选取标志点来获取到地面的投影矩阵。
 
 
-# 手动标定获取投影矩阵
+# 02-02. 滑动调整scale和shift参数，并手动标定投影点获取投影矩阵
 
 
-首先运行项目中 [run_get_projection_maps.py](https://github.com/neozhaoliang/surround-view-system-introduction/blob/master/run_get_projection_maps.py) 这个脚本，这个脚本需要你输入如下的参数：
+首先运行项目中 [run_get_projection_maps.py](../02-run_get_projection_maps.py) 这个脚本，这个脚本需要你输入如下的参数：
 
 + `-camera`: 指定是哪个相机。
+运行
+
+```bash
+python run_get_projection_maps.py -camera front
+```
+
+scaler和shift参数，你可以通过滑动调整来获取。
 + `-scale`: 校正后画面的横向和纵向放缩比。
 + `-shift`: 校正后画面中心的横向和纵向平移距离。
 
 为什么需要 `scale` 和 `shift` 这两个参数呢？这是因为默认的 OpenCV 的校正方式是在鱼眼相机校正后的图像中裁剪出一个 OpenCV "认为" 合适的区域并将其返回，这必然会丢失一部分像素，特别地可能会把我们希望选择的特征点给裁掉。幸运的是 [cv2.fisheye.initUndistortRectifyMap](https://docs.opencv.org/master/db/d58/group__calib3d__fisheye.html#ga0d37b45f780b32f63ed19c21aa9fd333) 这个函数允许我们再传入一个新的内参矩阵，对校正后但是裁剪前的画面作一次放缩和平移。你可以尝试调整并选择合适的横向、纵向压缩比和图像中心的位置使得地面上的标志点出现在画面中舒服的位置上，以方便进行标定。
 
-运行
-
-```bash
-python run_get_projection_maps.py -camera front -scale 0.7 0.8 -shift -150 -100
-```
+<img style="margin:0px auto;display:block" width=600 src="./img/scale_shift.png"/>
 
 后显示前方相机校正后的画面如下：
 
@@ -157,10 +162,10 @@ python run_get_projection_maps.py -camera front -scale 0.7 0.8 -shift -150 -100
 > **重要注意事项**：有不少读者反映在按照上面的方法进行标定时，得到的拼接效果不够好。经过询问，发现原因是他们选择的四个标定点都集中在图像的中心部分。你应该让四个标定点构成的矩形区域覆盖图像尽可能大的范围。原因是鱼眼图像在矫正后也是有误差的，边缘的误差更大。所以要尽可能让 OpenCV 在更大的范围内计算一个全局最优的射影矩阵。
 
 
-# 鸟瞰图的拼接与平滑
+# 03. 鸟瞰图的拼接与平滑
 
 
-如果你前面操作一切正常的话，运行 [run_get_weight_matrices.py](https://github.com/neozhaoliang/surround-view-system-introduction/blob/master/run_get_weight_matrices.py) 后应该会显示如下的拼接图：
+如果你前面操作一切正常的话，运行 [run_get_weight_matrices.py](../03-run_get_weight_matrices.py) 后应该会显示如下的拼接图：
 
 <img style="margin:0px auto;display:block" width=480 src="./img/result.png"/>
 
@@ -221,8 +226,9 @@ python run_get_projection_maps.py -camera front -scale 0.7 0.8 -shift -150 -100
 
     在第二个视频的例子中，画面的颜色偏红，加入色彩平衡后画面恢复了正常。
 
+运行 [03-2-static_birdview.py](../03-2-static_birdview.py) 可以基于weight和mask可视化静态环视效果。
 
-# 具体实现的注意事项
+# 04. 动态环视系统实现的注意事项
 
 
 1. 多线程与线程同步。本文的两个例子中四个摄像头都不是硬件触发保证同步的，而且即便是硬件同步的，四个画面的处理线程也未必同步，所以需要有一个线程同步机制。这个项目的实现采用的是比较原始的一种，其核心代码如下：

@@ -5,9 +5,9 @@ import numpy as np
 def display_image(window_title, image):
     cv2.imshow(window_title, image)
     while True:
-        click = cv2.getWindowProperty(window_title, cv2.WND_PROP_AUTOSIZE)
-        if click < 0:
-            return -1
+        # click = cv2.getWindowProperty(window_title, cv2.WND_PROP_AUTOSIZE)
+        # if click < 0:
+        #     return -1
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
@@ -87,9 +87,9 @@ class PointSelector(object):
         cv2.imshow(self.title, self.image)
 
         while True:
-            click = cv2.getWindowProperty(self.title, cv2.WND_PROP_AUTOSIZE)
-            if click < 0:
-                return False
+            # click = cv2.getWindowProperty(self.title, cv2.WND_PROP_AUTOSIZE)
+            # if click < 0:
+            #     return False
 
             key = cv2.waitKey(1) & 0xFF
 

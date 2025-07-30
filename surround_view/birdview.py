@@ -72,50 +72,74 @@ class ProjectedImageBuffer(object):
 
 
 def FI(front_image):
+    print("FI", front_image.shape)
+    print('FI after', front_image[:, :xl].shape)
     return front_image[:, :xl]
 
 
 def FII(front_image):
+    print("FII", front_image.shape)
+    print('FII after', front_image[:, xr:].shape)
     return front_image[:, xr:]
 
 
 def FM(front_image):
+    print("FM", front_image.shape)
+    print('FM after', front_image[:, xl:xr].shape)
     return front_image[:, xl:xr]
 
 
 def BIII(back_image):
+    print("BIII", back_image.shape)
+    print('BIII after', back_image[:, :xl].shape)
     return back_image[:, :xl]
 
 
 def BIV(back_image):
+    print("BIV", back_image.shape)
+    print('BIV after', back_image[:, xr:].shape)
     return back_image[:, xr:]
 
 
 def BM(back_image):
+    print("BM", back_image.shape)
+    print('BM after', back_image[:, xl:xr].shape)
     return back_image[:, xl:xr]
 
 
 def LI(left_image):
+    print("LI", left_image.shape)
+    print('LI after', left_image[:yt, :].shape)
     return left_image[:yt, :]
 
 
 def LIII(left_image):
+    print("LIII", left_image.shape)
+    print('LIII after', left_image[yb:, :].shape)
     return left_image[yb:, :]
 
 
 def LM(left_image):
+    print("LM", left_image.shape)
+    print('LM after', left_image[yt:yb, :].shape)
     return left_image[yt:yb, :]
 
 
 def RII(right_image):
+    print("RII", right_image.shape)
+    print('RII after', right_image[:yt, :].shape)
     return right_image[:yt, :]
 
 
 def RIV(right_image):
+    print("RIV", right_image.shape)
+    print('RIV after', right_image[yb:, :].shape)
     return right_image[yb:, :]
 
 
 def RM(right_image):
+    print("RM", right_image.shape)
+    print('RM after', right_image[yt:yb, :].shape)
     return right_image[yt:yb, :]
 
 
@@ -216,6 +240,10 @@ class BirdView(BaseThread):
                 return x * np.exp((1 - x) * 0.8)
 
         front, back, left, right = self.frames
+        print("Front shape:", front.shape)
+        print("Back shape:", back.shape)
+        print("Left shape:", left.shape)
+        print("Right shape:", right.shape)
         m1, m2, m3, m4 = self.masks
         Fb, Fg, Fr = cv2.split(front)
         Bb, Bg, Br = cv2.split(back)

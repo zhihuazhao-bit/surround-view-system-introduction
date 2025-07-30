@@ -46,6 +46,11 @@ def get_mean_statistisc(gray, mask):
     Get the total values of a gray image in a region defined by a mask matrix.
     The mask matrix must have values either 0 or 1.
     """
+    H, W = mask.shape
+    # print('mask', mask.shape)
+    # print('gray', gray.shape)
+    # print('gray cropped', gray[:H,:W].shape)
+    # return np.sum(gray[:H,:W] * mask)
     return np.sum(gray * mask)
 
 
